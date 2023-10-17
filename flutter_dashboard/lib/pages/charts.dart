@@ -2,8 +2,16 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import '../../../constants.dart';
+import 'package:firebase_core/firebase_core.dart'; // Import Firebase Core
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Chart extends StatelessWidget {
+  final messageRef = FirebaseFirestore.instance
+      .collection("userProfile")
+      .doc("NIyfNZmXs5N54EAKjVqVae0GvqF2")
+      .collection("dashboard")
+      .doc("1tEb7x5FDPMdhRXsmc1Q");
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -1265,17 +1273,29 @@ class BarChartSample3State extends State<BarChartSample3> {
   late List<BarChartGroupData> showingBarGroups;
 
   int touchedGroupIndex = -1;
+  double sum =0 ;
+  double totalsum =0 ;
+  List<Map<String, dynamic>> calWeekdayList = [];
+  final List<double> weeklyCal = [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ]; // สร้าง List 7 วันสำหรับค่า cal แต่ละวั
 
   @override
   void initState() {
     super.initState();
-    final barGroup1 = makeGroupData(0, 20, 4);
-    final barGroup2 = makeGroupData(1, 20, 12);
-    final barGroup3 = makeGroupData(2, 20, 5);
-    final barGroup4 = makeGroupData(3, 20, 16);
-    final barGroup5 = makeGroupData(4, 20, 6);
-    final barGroup6 = makeGroupData(5, 20, 1.5);
-    final barGroup7 = makeGroupData(6, 20, 1.5);
+    final barGroup1 = makeGroupData(0, 20, weeklyCal[0]);
+    final barGroup2 = makeGroupData(1, 20, weeklyCal[1]);
+    final barGroup3 = makeGroupData(2, 20, weeklyCal[2]);
+    final barGroup4 = makeGroupData(3, 20, weeklyCal[3]);
+    final barGroup5 = makeGroupData(4, 20, weeklyCal[4]);
+    final barGroup6 = makeGroupData(5, 20, weeklyCal[5]);
+    final barGroup7 = makeGroupData(6, 20, weeklyCal[6]);
 
     final items = [
       barGroup1,
@@ -1290,6 +1310,73 @@ class BarChartSample3State extends State<BarChartSample3> {
     rawBarGroups = items;
 
     showingBarGroups = rawBarGroups;
+    retrieveBarChartSample3();
+  }
+
+  void retrieveBarChartSample3() {
+    FirebaseFirestore.instance.collection("userProfile").get().then((value) {
+      value.docs.forEach((result) {
+        FirebaseFirestore.instance
+            .collection("userProfile")
+            .doc(result.id)
+            .collection("dashboard")
+            .get()
+            .then((subcol) {
+          final DateTime today = DateTime.now();
+
+          subcol.docs.forEach((element) {
+            double cal = element.data()['cal'];
+            DateTime dateex = element.data()['date'].toDate();
+            sum = sum + cal;
+            totalsum = totalsum +1 ;
+            int weekday = dateex.weekday -
+                1; // ลบ 1 เนื่องจากลำดับของ List จะเริ่มต้นที่ 0
+
+            Map<String, dynamic> data = {
+              'cal': cal,
+              'dateex': dateex,
+              'weekday': weekday,
+            };
+            calWeekdayList.add(data);
+            calWeekdayList.sort((a, b) {
+              DateTime dateA = a['dateex'];
+              DateTime dateB = b['dateex'];
+              return dateA.compareTo(dateB);
+            });
+          
+          });
+          // print("start");
+          for (var item in calWeekdayList) {
+            // print(item["weekday"]);
+
+            if (item["weekday"] == 0) {
+              weeklyCal.fillRange(0, 7, 0);
+            }
+
+            weeklyCal[item["weekday"]] = item["cal"] / 20;
+            // print(weeklyCal);
+            // print(calWeekdayList);
+          }
+
+          // Create bar groups based on updated weeklyCal
+          final items = [
+            makeGroupData(0, 20, weeklyCal[0]),
+            makeGroupData(1, 20, weeklyCal[1]),
+            makeGroupData(2, 20, weeklyCal[2]),
+            makeGroupData(3, 20, weeklyCal[3]),
+            makeGroupData(4, 20, weeklyCal[4]),
+            makeGroupData(5, 20, weeklyCal[5]),
+            makeGroupData(6, 20, weeklyCal[6]),
+          ];
+
+          rawBarGroups = items;
+          showingBarGroups = rawBarGroups;
+
+          setState(() {});
+          
+        });
+      });
+    });
   }
 
   @override
@@ -1325,7 +1412,7 @@ class BarChartSample3State extends State<BarChartSample3> {
                         children: <Widget>[
                           //makeTransactionsIcon(),
                           const Text(
-                            'Monthly Profits',
+                            'การเผาผลาญ',
                             style: TextStyle(color: Colors.white, fontSize: 14),
                           ),
                           // const Text(
@@ -1344,21 +1431,12 @@ class BarChartSample3State extends State<BarChartSample3> {
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: <Widget>[
                           const Text(
-                            'Of ',
+                            'ของสัปดาห์นี้ ',
                             style: TextStyle(color: Colors.white, fontSize: 12),
                           ),
-                          Text(
-                            'Sales ',
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                          const Text(
-                            'And ',
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                          Text(
-                            'Orders',
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
+                          
+                            
+                          
                         ],
                       ),
                       const SizedBox(
@@ -1573,8 +1651,15 @@ class Circular1State extends State<Circular1> {
   final Color leftBarColor = const Color(0xff000000).withOpacity(0.4);
   final Color rightBarColor = const Color(0xffff5182);
   final double width = 10;
-  final double varcal = 40;
-  final double tovarcal = 100;
+  double varcal = 0;
+  double tovarcal = 100;
+
+  double totalCal = 0.0; // สร้างตัวแปรเพื่อเก็บผลรวม cal
+  double calnow = 0;
+  DateTime now = DateTime.now();
+
+  List<Map<String, dynamic>> calWeekdayList = [];
+  List<Map<String, dynamic>> caltodayList = [];
 
   late List<BarChartGroupData> rawBarGroups;
   late List<BarChartGroupData> showingBarGroups;
@@ -1584,6 +1669,44 @@ class Circular1State extends State<Circular1> {
   @override
   void initState() {
     super.initState();
+    retrieveCircular();
+  }
+
+  void retrieveCircular() {
+    FirebaseFirestore.instance.collection("userProfile").get().then((value) => {
+          value.docs.forEach((result) {
+            FirebaseFirestore.instance
+                .collection("userProfile")
+                .doc(result.id)
+                .collection("dashboard")
+                .get()
+                .then((subcol) {
+              subcol.docs.forEach((element) {
+                double time = element.data()['time'];
+                double cal = element.data()['cal'];
+                double cal_goal = element.data()['cal_goal'];
+                DateTime dateex = element.data()['date'].toDate();
+
+                int weeekday = dateex.weekday;
+
+                if (dateex.year == now.year &&
+                    dateex.month == now.month &&
+                    dateex.day == now.day) {
+                  calnow = time;
+                  Map<String, dynamic> data1 = {
+                    'cal': cal,
+                    'cal_goal': cal_goal,
+                  };
+                  caltodayList.add(data1);
+                  varcal = cal;
+                  tovarcal = cal_goal;
+                }
+
+                setState(() {});
+              });
+            });
+          })
+        });
   }
 
   @override
@@ -1619,43 +1742,49 @@ class Circular1State extends State<Circular1> {
                         children: <Widget>[
                           //makeTransactionsIcon(),
                           const Text(
-                            'Total Calories',
+                            'วันนี้มีการเผาผลาญ',
                             style: TextStyle(color: Colors.white, fontSize: 14),
                           ),
                         ],
+                      ),
+                      const SizedBox(
+                        height: 4,
                       ),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: <Widget>[
+                          const SizedBox(
+                            height: 4,
+                          ),
                           const Text(
-                            'Of ',
+                            'เป้าหมาย: ',
                             style: TextStyle(color: Colors.white, fontSize: 12),
                           ),
                           Text(
-                            'Sales ',
-                            style: TextStyle(color: Colors.white, fontSize: 12),
+                            '${tovarcal.toInt()}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const Text(
-                            'And ',
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                          Text(
-                            'Orders',
+                            ' kcal ',
                             style: TextStyle(color: Colors.white, fontSize: 12),
                           ),
                         ],
                       ),
                       const SizedBox(
-                        height: 10,
+                        height: 4,
                       ),
                       Expanded(
                           child: Padding(
-                        padding: const EdgeInsets.all(20.0),
+                        padding: const EdgeInsets.all(16.0),
                         child: Stack(fit: StackFit.expand, children: [
                           CircularProgressIndicator(
-                            value: 1 - varcal / tovarcal,
+                            value: varcal / tovarcal,
                             valueColor:
                                 AlwaysStoppedAnimation(Constants.orange),
                             strokeCap: StrokeCap.round,
@@ -1663,13 +1792,11 @@ class Circular1State extends State<Circular1> {
                             backgroundColor: Constants.red,
                           ),
                           Center(
-                            
                             child: Column(
                               children: [
                                 SizedBox(
-                  height: 15,
-                ),
-                                
+                                  height: 15,
+                                ),
                                 Text(
                                   varcal.toString(),
                                   style: TextStyle(
@@ -1678,7 +1805,7 @@ class Circular1State extends State<Circular1> {
                                   ),
                                 ),
                                 Text(
-                                 'kcal',
+                                  'kcal',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Constants.white,
@@ -1686,8 +1813,6 @@ class Circular1State extends State<Circular1> {
                                 ),
                               ],
                             ),
-                            
-                            
                           ),
                         ]),
                       ))
@@ -1703,8 +1828,6 @@ class Circular1State extends State<Circular1> {
   }
 }
 
-
-
 class LineChartSample12 extends StatefulWidget {
   @override
   State<StatefulWidget> createState() => LineChartSample12State();
@@ -1712,11 +1835,68 @@ class LineChartSample12 extends StatefulWidget {
 
 class LineChartSample12State extends State<LineChartSample12> {
   late bool isShowingMainData;
+  List<Map<String, dynamic>> calchapList = [];
+  List<double> daydayex = []; // เพิ่ม List เพื่อเก็บค่า 'dayday'
+  List<double> caldayex = []; // เพิ่ม List เพื่อเก็บค่า 'dayday'
+
+  double cal = 0;
+  double Maxcal = 0;
 
   @override
   void initState() {
     super.initState();
+    retrieveLineChartSample12();
     isShowingMainData = true;
+  }
+
+  void retrieveLineChartSample12() {
+    FirebaseFirestore.instance.collection("userProfile").get().then((value) {
+      value.docs.forEach((result) {
+        FirebaseFirestore.instance
+            .collection("userProfile")
+            .doc(result.id)
+            .collection("dashboard")
+            .get()
+            .then((subcol) {
+          subcol.docs.forEach((element) {
+            double time = element.data()['time'];
+            cal = element.data()['cal'];
+            DateTime dateex = element.data()['date'].toDate();
+            int dayday = dateex.day;
+
+            Map<String, dynamic> data = {
+              'cal': cal,
+              'dayday': dayday,
+            };
+
+            calchapList.add(data);
+            daydayex
+                .add(dayday.toDouble()); // เพิ่มค่า 'dayday' ลงใน List daydayex
+            caldayex
+                .add(cal.toDouble()); // เพิ่มค่า 'dayday' ลงใน List daydayex
+
+            // เรียงลำดับ calchapList ตาม 'dayday'
+            daydayex.sort((a, b) {
+              double daydayA = a;
+              double daydayB = b;
+              return daydayA.compareTo(daydayB);
+            });
+
+            calchapList.sort((a, b) {
+              int daydayA = a['dayday'];
+              int daydayB = b['dayday'];
+              return daydayA.compareTo(daydayB);
+            });
+
+            var maximumNumber = caldayex
+                .reduce((value, element) => value > element ? value : element);
+            Maxcal = maximumNumber.toDouble();
+
+            setState(() {});
+          });
+        });
+      });
+    });
   }
 
   @override
@@ -1742,7 +1922,7 @@ class LineChartSample12State extends State<LineChartSample12> {
                     height: 20,
                   ),
                   const Text(
-                    'Unfold Shop 2021',
+                    '9 ต.ค. - 1 พ.ย. 2566',
                     style: TextStyle(
                       color: Color(0xff827daa),
                       fontSize: 16,
@@ -1753,7 +1933,7 @@ class LineChartSample12State extends State<LineChartSample12> {
                     height: 4,
                   ),
                   const Text(
-                    'Monthly Sales',
+                    'การเผาผลาญ',
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -1768,7 +1948,7 @@ class LineChartSample12State extends State<LineChartSample12> {
                     child: Padding(
                       padding: const EdgeInsets.only(right: 16.0, left: 6.0),
                       child: LineChart(
-                        sampleData1() ,
+                        sampleData1(),
                         swapAnimationDuration:
                             const Duration(milliseconds: 250),
                       ),
@@ -1779,7 +1959,6 @@ class LineChartSample12State extends State<LineChartSample12> {
                   ),
                 ],
               ),
-              
             ],
           ),
         ),
@@ -1810,13 +1989,12 @@ class LineChartSample12State extends State<LineChartSample12> {
           // ),
           margin: 10,
           getTitles: (value) {
-            switch (value.toInt()) {
-              case 2:
-                return 'SEPT';
-              case 7:
-                return 'OCT';
-              case 12:
-                return 'DEC';
+            if (value >= 1 && value <= 30) {
+              int index = value.toInt() -
+                  1; // เพิ่มการแปลงค่า value เป็น int และลบ 1 เพื่อใช้เป็น index
+              if (index >= 0 && index < daydayex.length) {
+                return ' ${daydayex[index]}';
+              }
             }
             return '';
           },
@@ -1830,16 +2008,16 @@ class LineChartSample12State extends State<LineChartSample12> {
           // ),
           getTitles: (value) {
             switch (value.toInt()) {
-              case 1:
-                return '1m';
               case 2:
-                return '2m';
-              case 3:
-                return '3m';
+                return '${Maxcal.toInt() / 5}';
               case 4:
-                return '5m';
-              case 5:
-                return '6m';
+                return '${Maxcal.toInt() * 2 / 5}';
+              case 6:
+                return '${Maxcal.toInt() * 3 / 5}';
+              case 8:
+                return '${Maxcal.toInt() * 4 / 5}';
+              case 10:
+                return '${Maxcal.toInt()}';
             }
             return '';
           },
@@ -1866,46 +2044,38 @@ class LineChartSample12State extends State<LineChartSample12> {
         ),
       ),
       minX: 0,
-      maxX: 14,
-      maxY: 5,
+      maxX: (daydayex.length).toDouble() + 1,
+      maxY: Maxcal / 50,
       minY: 0,
       lineBarsData: linesBarData1(),
     );
   }
 
+  List<FlSpot> daydayexFlSpots = [];
   List<LineChartBarData> linesBarData1() {
-    
+    for (int i = 0; i < daydayex.length; i++) {
+      double calValue = calchapList[i]['cal'].toDouble();
+      print(calValue.toString() + " " + (i + 1).toString());
+      daydayexFlSpots.add(FlSpot((i + 1).toDouble(), calValue / 50));
+    }
     final lineChartBarData4 = LineChartBarData(
-        spots: [
-          FlSpot(1, 1),
-          FlSpot(3, 2.8),
-          FlSpot(7, 1.2),
-          FlSpot(10, 2.8),
-          FlSpot(12, 2.6),
-          FlSpot(13, 3.9),
-        ],
-        isCurved: true,
-        colors: const [
-          Color(0x99aa4cfc),
-        ],
-        barWidth: 4,
-        isStrokeCapRound: true,
-        dotData: FlDotData(
-          show: false,
-        ),
-        belowBarData: BarAreaData(show: true, colors: [
-          const Color(0x33aa4cfc),
-        ]),
-      );
-    
+      spots: daydayexFlSpots, // ใช้ข้อมูลจาก daydayexFlSpots ที่สร้างไว้
+      isCurved: true,
+      colors: const [
+        Color(0x99aa4cfc),
+      ],
+      barWidth: 4,
+      isStrokeCapRound: true,
+      dotData: FlDotData(
+        show: false,
+      ),
+      belowBarData: BarAreaData(show: true, colors: [
+        const Color(0x33aa4cfc),
+      ]),
+    );
+
     return [
-      
       lineChartBarData4,
     ];
   }
-
-
-
-  
 }
-

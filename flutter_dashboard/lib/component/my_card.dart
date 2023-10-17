@@ -4,8 +4,8 @@ import '../pages/charts.dart';
 
 class Mycard extends StatelessWidget {
 
-  final double balance;
-  final int cardNum;
+  final String balance;
+  final String cardNum;
   final int expiryM;
   final int expiryY;
   final color;
@@ -37,7 +37,7 @@ class Mycard extends StatelessWidget {
                   height: 8,
                 ),
                 Text(
-                  'Today\'s Activity',
+                  'เวลาออกกำลังกาย',
                   style: TextStyle(
                     color: Constants.white,
                     fontSize: 24,
@@ -60,20 +60,23 @@ class Mycard extends StatelessWidget {
                   width: 10,
                 ),
                 
-                    Container(
-                      
-                      child: Text(
-                        "min" ,
-                        style: TextStyle(
-                          color: Constants.white,
-                          fontSize: 18,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 13, 0, 0),
+                      child: Container(
+                        
+                        child: Text(
+                          "นาที" ,
+                          style: TextStyle(
+                            color: Constants.white,
+                            fontSize: 18,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
                 SizedBox(
-                  height: 30,
+                  height: 10,
                 ),
                 
 
